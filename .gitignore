@@ -2,6 +2,7 @@
 *.pyc
 *.egg-info
 *.swp
+teams_alert_BUILD_SPEC.md
 tags
 node_modules
 __pycache__

@@ -137,13 +137,15 @@ app_license = "mit"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"*": {
+		"after_insert": "teams_alert.teams_alert.teams_alert_engine.handle_event",
+		"on_submit": "teams_alert.teams_alert.teams_alert_engine.handle_event",
+		"on_cancel": "teams_alert.teams_alert.teams_alert_engine.handle_event",
+		"on_update": "teams_alert.teams_alert.teams_alert_engine.handle_event",
+		"on_change": "teams_alert.teams_alert.teams_alert_engine.handle_event",
+	}
+}
 
 # Scheduled Tasks
 # ---------------
