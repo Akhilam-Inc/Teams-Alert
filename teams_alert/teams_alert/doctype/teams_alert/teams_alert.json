@@ -76,7 +76,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Send Alert On",
-   "options": "New\nSubmit\nCancel\nUpdate\nValue Change\nDays Before\nDays After\nMethod",
+   "options": "New\nSubmit\nCancel\nUpdate\nValue Change\nDays Before\nDays After\nMethod\nDaily Attendance Check",
    "reqd": 1
   },
   {
