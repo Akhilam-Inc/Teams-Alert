@@ -2,6 +2,9 @@ import traceback
 
 import frappe
 import requests
+from frappe.utils import add_to_date, nowdate
+
+DATE_BASED_EVENTS = ("Days Before", "Days After")
 
 METHOD_TO_EVENT = {
 	"after_insert": "New",
@@ -12,10 +15,15 @@ METHOD_TO_EVENT = {
 }
 
 
-def handle_event(doc, method):
-	send_alert_on = METHOD_TO_EVENT.get(method)
-	if not send_alert_on:
-		return
+def handle_event(doc, method, *args, context=None, **kwargs):
+	"""Send the Teams Alerts that match a document event.
+
+	Standard hooks map to their event name. Any other method name is a
+	"Method" event, like in Notification. Such a method reaches this handler
+	only when an app routes it here in its doc_events, and it can pass
+	`context` through doc.run_method(method, context={...}).
+	"""
+	send_alert_on = METHOD_TO_EVENT.get(method, "Method")
 
 	# Skip internal Teams Alert / Teams Webhook saves to avoid infinite loops
 	if doc.doctype in ("Teams Alert", "Teams Webhook"):
@@ -25,38 +33,100 @@ def handle_event(doc, method):
 	if not frappe.db.table_exists("Teams Alert"):
 		return
 
-	alerts = frappe.get_all(
-		"Teams Alert",
-		filters={
-			"enabled": 1,
-			"document_type": doc.doctype,
-			"send_alert_on": send_alert_on,
-		},
-		pluck="name",
-	)
+	filters = {
+		"enabled": 1,
+		"document_type": doc.doctype,
+		"send_alert_on": send_alert_on,
+	}
+	if send_alert_on == "Method":
+		filters["method"] = method
+
+	alerts = frappe.get_all("Teams Alert", filters=filters, pluck="name")
 
 	if not alerts:
 		return
 
 	for alert_name in alerts:
 		alert = frappe.get_doc("Teams Alert", alert_name)
-		if _evaluate_condition(alert, doc):
-			frappe.enqueue(
-				"teams_alert.teams_alert.teams_alert_engine.send_alert",
-				alert_name=alert_name,
-				doctype=doc.doctype,
-				docname=doc.name,
-				queue="default",
-				now=frappe.flags.in_test,
-				enqueue_after_commit=True,
+		if _evaluate_condition(alert, doc, context):
+			_enqueue_send_alert(alert_name, doc.doctype, doc.name, context)
+
+
+def trigger_daily_alerts():
+	"""Send "Days Before" / "Days After" alerts. Same as Notification's daily trigger."""
+	if not frappe.db.table_exists("Teams Alert"):
+		return
+
+	alerts = frappe.get_all(
+		"Teams Alert",
+		filters={"enabled": 1, "send_alert_on": ("in", DATE_BASED_EVENTS)},
+		pluck="name",
+	)
+	for alert_name in alerts:
+		try:
+			alert = frappe.get_doc("Teams Alert", alert_name)
+			for docname in _get_documents_for_today(alert):
+				_enqueue_send_alert(alert_name, alert.document_type, docname)
+		except Exception:
+			frappe.log_error(
+				title=f"Teams Alert Daily Trigger Error: {alert_name}",
+				message=traceback.format_exc(),
 			)
 
 
-def _evaluate_condition(alert, doc):
+def _get_documents_for_today(alert):
+	"""Names of documents whose reference date is today ± days_in_advance.
+
+	Mirrors Notification.get_documents_for_today.
+	"""
+	diff_days = alert.days_in_advance or 0
+	if alert.send_alert_on == "Days After":
+		diff_days = -diff_days
+
+	reference_date = add_to_date(nowdate(), days=diff_days)
+	docnames = frappe.get_all(
+		alert.document_type,
+		filters=[
+			[alert.date_changed, ">=", reference_date + " 00:00:00.000000"],
+			[alert.date_changed, "<=", reference_date + " 23:59:59.000000"],
+		],
+		pluck="name",
+	)
+
+	return [
+		docname
+		for docname in docnames
+		if _evaluate_condition(alert, frappe.get_doc(alert.document_type, docname))
+	]
+
+
+def _enqueue_send_alert(alert_name, doctype, docname, context=None):
+	frappe.enqueue(
+		"teams_alert.teams_alert.teams_alert_engine.send_alert",
+		alert_name=alert_name,
+		doctype=doctype,
+		docname=docname,
+		context=context,
+		queue="default",
+		now=frappe.flags.in_test,
+		enqueue_after_commit=True,
+	)
+
+
+def get_context(doc, context=None):
+	"""Condition context: `doc` and `nowdate` like Notification, plus `context`.
+
+	`frappe` comes from the safe_eval globals, which already include
+	frappe.utils (the only part Notification exposes).
+	"""
+	return {**(context or {}), "doc": doc, "nowdate": nowdate}
+
+
+def _evaluate_condition(alert, doc, context=None):
 	if not alert.condition:
 		return True
 	try:
-		return bool(frappe.safe_eval(alert.condition.strip(), eval_globals=None, eval_locals={"doc": doc}))
+		return bool(frappe.safe_eval(alert.condition.strip(), None, get_context(doc, context)))
 	except Exception:
 		frappe.log_error(
 			title=f"Teams Alert Condition Error: {alert.name}",
@@ -65,7 +135,7 @@ def _evaluate_condition(alert, doc):
 		return False
 
 
-def send_alert(alert_name, doctype, docname):
+def send_alert(alert_name, doctype, docname, context=None):
 	try:
 		if not frappe.db.exists("Teams Alert", alert_name):
 			return
@@ -80,7 +150,7 @@ def send_alert(alert_name, doctype, docname):
 		if not webhook.enabled:
 			return
 
-		context = {"doc": doc, "alert": alert}
+		context = {**(context or {}), "doc": doc, "alert": alert}
 		subject = frappe.render_template(alert.subject or "", context)
 		# Keep rendered HTML — card builder will parse it into paragraphs
 		message_html = frappe.render_template(alert.message or "", context)

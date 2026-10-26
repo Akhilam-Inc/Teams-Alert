@@ -138,35 +138,25 @@ app_license = "mit"
 # Hook on document methods and events
 
 doc_events = {
-	"*": {
-		"after_insert": "teams_alert.teams_alert.teams_alert_engine.handle_event",
-		"on_submit": "teams_alert.teams_alert.teams_alert_engine.handle_event",
-		"on_cancel": "teams_alert.teams_alert.teams_alert_engine.handle_event",
-		"on_update": "teams_alert.teams_alert.teams_alert_engine.handle_event",
-		"on_change": "teams_alert.teams_alert.teams_alert_engine.handle_event",
-	}
+    "*": {
+        "after_insert": "teams_alert.teams_alert.teams_alert_engine.handle_event",
+        "on_submit": "teams_alert.teams_alert.teams_alert_engine.handle_event",
+        "on_cancel": "teams_alert.teams_alert.teams_alert_engine.handle_event",
+        "on_update": "teams_alert.teams_alert.teams_alert_engine.handle_event",
+        "on_change": "teams_alert.teams_alert.teams_alert_engine.handle_event",
+        # Methods for the "Method" event. Frappe passes a doc.run_method call
+        # to doc_events only for the method names listed here.
+        "send_payment_reminder": "teams_alert.teams_alert.teams_alert_engine.handle_event",
+    }
 }
 
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"teams_alert.tasks.all"
-# 	],
-# 	"daily": [
-# 		"teams_alert.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"teams_alert.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"teams_alert.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"teams_alert.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+    "daily": ["teams_alert.teams_alert.teams_alert_engine.trigger_daily_alerts"],
+    "cron": {"45 10 * * *": ["teams_alert.tasks.send_missing_checkin_alert"]},
+}
 
 # Testing
 # -------
@@ -248,4 +238,3 @@ doc_events = {
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
-
