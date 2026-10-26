@@ -144,29 +144,18 @@ doc_events = {
 		"on_cancel": "teams_alert.teams_alert.teams_alert_engine.handle_event",
 		"on_update": "teams_alert.teams_alert.teams_alert_engine.handle_event",
 		"on_change": "teams_alert.teams_alert.teams_alert_engine.handle_event",
+		# Methods for the "Method" event. Frappe passes a doc.run_method call
+		# to doc_events only for the method names listed here.
+		"send_payment_reminder": "teams_alert.teams_alert.teams_alert_engine.handle_event",
 	}
 }
 
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"teams_alert.tasks.all"
-# 	],
-# 	"daily": [
-# 		"teams_alert.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"teams_alert.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"teams_alert.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"teams_alert.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+	"daily": ["teams_alert.teams_alert.teams_alert_engine.trigger_daily_alerts"],
+}
 
 # Testing
 # -------

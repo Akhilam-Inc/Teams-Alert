@@ -8,6 +8,9 @@
   "title",
   "subject",
   "send_alert_on",
+  "method",
+  "date_changed",
+  "days_in_advance",
   "condition",
   "enabled",
   "column_break_cpvm",
@@ -30,6 +33,30 @@
    "unique": 1
   },
   {
+   "depends_on": "eval:doc.send_alert_on==\"Method\"",
+   "description": "Name of the document method, for example <code>send_payment_reminder</code>. The alert is sent when <code>doc.run_method(\"&lt;method&gt;\")</code> runs and the method is routed to Teams Alert in <code>doc_events</code>.",
+   "fieldname": "method",
+   "fieldtype": "Data",
+   "label": "Method",
+   "mandatory_depends_on": "eval:doc.send_alert_on==\"Method\""
+  },
+  {
+   "depends_on": "eval:doc.document_type && (doc.send_alert_on==\"Days After\" || doc.send_alert_on==\"Days Before\")",
+   "description": "Send alert if date matches this field's value",
+   "fieldname": "date_changed",
+   "fieldtype": "Select",
+   "label": "Reference Date",
+   "mandatory_depends_on": "eval:doc.document_type && (doc.send_alert_on==\"Days After\" || doc.send_alert_on==\"Days Before\")"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.document_type && (doc.send_alert_on==\"Days After\" || doc.send_alert_on==\"Days Before\")",
+   "description": "Send days before or after the reference date",
+   "fieldname": "days_in_advance",
+   "fieldtype": "Int",
+   "label": "Days Before or After"
+  },
+  {
    "default": "1",
    "fieldname": "enabled",
    "fieldtype": "Check",
@@ -49,7 +76,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Send Alert On",
-   "options": "New\nSubmit\nCancel\nUpdate\nValue Change",
+   "options": "New\nSubmit\nCancel\nUpdate\nValue Change\nDays Before\nDays After\nMethod",
    "reqd": 1
   },
   {
@@ -110,7 +137,7 @@
   }
  ],
  "links": [],
- "modified": "2026-05-26 18:28:02.199311",
+ "modified": "2026-10-26 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Teams Alert",
  "name": "Teams Alert",
