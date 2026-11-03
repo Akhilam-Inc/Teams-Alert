@@ -160,7 +160,6 @@ doc_events = {
 scheduler_events = {
 	"daily": ["teams_alert.teams_alert.teams_alert_engine.trigger_daily_alerts"],
 	"cron": {
-		"45 10 * * *": ["teams_alert.tasks.send_missing_checkin_alert"],
 		"0 11 * * 1-5": ["teams_alert.timesheet_alerts.send_daily_timesheet_reminders"],
 		"0 11 * * 6": ["teams_alert.timesheet_alerts.send_saturday_final_reminders"],
 		# Runs on days 1-7; each employee is sent on their first working day of the month.
