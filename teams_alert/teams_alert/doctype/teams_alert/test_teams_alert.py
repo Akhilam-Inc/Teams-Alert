@@ -88,7 +88,9 @@ class TestTeamsAlert(FrappeTestCase):
 		self._todo().run_method("send_payment_reminder", context={"reminder_count": 3})
 
 		self.assertEqual(self._posted_subjects(), ["Reminder 3 sent"])
-		self.assertIn("/app/todo/", self.post.call_args.kwargs["json"]["attachments"][0]["content"]["actions"][0]["url"])
+		self.assertIn(
+			"/app/todo/", self.post.call_args.kwargs["json"]["attachments"][0]["content"]["actions"][0]["url"]
+		)
 
 	def test_method_requires_method_name(self):
 		with self.assertRaises(frappe.ValidationError):

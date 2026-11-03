@@ -34,4 +34,4 @@ class TeamsAlert(Document):
 def _date_fields(doctype):
 	meta = frappe.get_meta(doctype)
 	fields = [df.fieldname for df in meta.fields if df.fieldtype in ("Date", "Datetime")]
-	return fields + ["creation", "modified"]
+	return [*fields, "creation", "modified"]

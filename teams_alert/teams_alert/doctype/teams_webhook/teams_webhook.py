@@ -8,6 +8,7 @@ class TeamsWebhook(Document):
 	def validate(self):
 		if self.webhook_url and not self.webhook_url.strip().startswith("https://"):
 			frappe.throw("Webhook URL must start with https://")
+
 	@frappe.whitelist()
 	def send_test_message(self):
 		site = frappe.local.site

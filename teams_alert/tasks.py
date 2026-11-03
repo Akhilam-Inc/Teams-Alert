@@ -1,13 +1,15 @@
-import traceback
 import datetime
-import requests
+import traceback
+
 import frappe
-from frappe.utils import today, get_datetime
-from teams_alert.teams_alert.teams_alert_engine import (
-	_set_alert_status,
-	_build_adaptive_card,
-)
+import requests
 from erpnext.setup.doctype.holiday_list.holiday_list import is_holiday
+from frappe.utils import get_datetime, today
+
+from teams_alert.teams_alert.teams_alert_engine import (
+	_build_adaptive_card,
+	_set_alert_status,
+)
 
 
 def send_missing_checkin_alert():
@@ -46,9 +48,7 @@ def run_attendance_check_for_alert(alert_name):
 	if alert.last_sent:
 		last_sent_date = get_datetime(alert.last_sent).strftime("%Y-%m-%d")
 		if last_sent_date == today_date:
-			frappe.logger().info(
-				f"Teams Alert {alert_name} was already sent today. Skipping."
-			)
+			frappe.logger().info(f"Teams Alert {alert_name} was already sent today. Skipping.")
 			return
 
 	# Working Day Check
@@ -60,9 +60,7 @@ def run_attendance_check_for_alert(alert_name):
 
 	holiday_list = None
 	if company:
-		holiday_list = frappe.get_cached_value(
-			"Company", company, "default_holiday_list"
-		)
+		holiday_list = frappe.get_cached_value("Company", company, "default_holiday_list")
 
 	is_today_holiday = False
 
@@ -76,15 +74,11 @@ def run_attendance_check_for_alert(alert_name):
 			is_today_holiday = True
 
 	if is_today_holiday:
-		frappe.logger().info(
-			f"Today ({today_date}) is a holiday or Sunday. Skipping Teams Alert."
-		)
+		frappe.logger().info(f"Today ({today_date}) is a holiday or Sunday. Skipping Teams Alert.")
 		return
 
 	# Fetch Active Employees
-	employees = frappe.get_all(
-		"Employee", filters={"status": "Active"}, fields=["name", "employee_name"]
-	)
+	employees = frappe.get_all("Employee", filters={"status": "Active"}, fields=["name", "employee_name"])
 	if not employees:
 		frappe.logger().info("No active employees found to monitor.")
 		return
@@ -129,9 +123,7 @@ def run_attendance_check_for_alert(alert_name):
 	# Retrieve Webhook configuration
 	webhook = frappe.get_doc("Teams Webhook", alert.teams_webhook)
 	if not webhook.enabled:
-		frappe.logger().info(
-			f"Teams Webhook {alert.teams_webhook} is disabled. Skipping."
-		)
+		frappe.logger().info(f"Teams Webhook {alert.teams_webhook} is disabled. Skipping.")
 		return
 
 	# Format the Teams notification message
