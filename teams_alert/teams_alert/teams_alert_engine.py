@@ -145,9 +145,8 @@ def send_alert(alert_name, doctype, docname, context=None):
 			return
 		doc = frappe.get_doc(doctype, docname)
 
-		webhook = frappe.get_doc("Teams Webhook", alert.teams_webhook)
-
-		if not webhook.enabled:
+		webhook = _resolve_webhook(alert, doc, context)
+		if not webhook or not webhook.enabled:
 			return
 
 		context = {**(context or {}), "doc": doc, "alert": alert}
@@ -168,6 +167,24 @@ def send_alert(alert_name, doctype, docname, context=None):
 			message=error_msg,
 		)
 		_set_alert_status(alert_name, "Failed", error_msg[:500])
+
+
+def _resolve_webhook(alert, doc, context=None):
+	"""Teams Webhook to send `alert` for `doc` to, or None to skip.
+
+	With "Send to Employee's Personal Chat" ticked, only the employee's personal
+	webhook is used; there is never a fallback to a team channel.
+	"""
+	if not alert.send_to_personal_chat:
+		return frappe.get_doc("Teams Webhook", alert.teams_webhook) if alert.teams_webhook else None
+
+	if doc.doctype == "Employee":
+		employee = doc.name
+	else:
+		employee = (context or {}).get("employee") or doc.get("employee")
+
+	webhook = get_personal_webhook(employee)
+	return frappe.get_doc("Teams Webhook", webhook) if webhook else None
 
 
 def get_personal_webhook(employee):

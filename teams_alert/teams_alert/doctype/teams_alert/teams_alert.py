@@ -7,6 +7,7 @@ from teams_alert.teams_alert.teams_alert_engine import DATE_BASED_EVENTS
 class TeamsAlert(Document):
 	def validate(self):
 		self.validate_event_fields()
+		self.validate_personal_chat()
 
 		if self.condition:
 			try:
@@ -29,6 +30,16 @@ class TeamsAlert(Document):
 				frappe.throw("Please specify which date field must be checked")
 			if self.date_changed not in _date_fields(self.document_type):
 				frappe.throw(f"{self.date_changed} is not a Date or Datetime field of {self.document_type}")
+
+	def validate_personal_chat(self):
+		if not self.send_to_personal_chat:
+			if not self.teams_webhook:
+				frappe.throw("Teams Webhook is required unless Send to Employee's Personal Chat is ticked")
+			return
+		if self.document_type != "Employee" and not frappe.get_meta(self.document_type).has_field("employee"):
+			frappe.throw(
+				"Send to Employee's Personal Chat needs Document Type Employee or a document type with an employee field"
+			)
 
 
 def _date_fields(doctype):

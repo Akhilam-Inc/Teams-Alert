@@ -7,6 +7,11 @@ frappe.ui.form.on("Teams Alert", {
 			);
 		}
 		frm.trigger("set_date_options");
+		frm.trigger("send_to_personal_chat");
+	},
+
+	send_to_personal_chat(frm) {
+		frm.toggle_display("teams_webhook", !frm.doc.send_to_personal_chat);
 	},
 
 	document_type(frm) {
