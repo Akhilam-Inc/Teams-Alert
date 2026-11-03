@@ -147,6 +147,10 @@ doc_events = {
 		# Methods for the "Method" event. Frappe passes a doc.run_method call
 		# to doc_events only for the method names listed here.
 		"send_payment_reminder": "teams_alert.teams_alert.teams_alert_engine.handle_event",
+		# Fired by teams_alert.timesheet_alerts for the Employee doctype.
+		"send_timesheet_reminder": "teams_alert.teams_alert.teams_alert_engine.handle_event",
+		"send_timesheet_final_reminder": "teams_alert.teams_alert.teams_alert_engine.handle_event",
+		"send_salary_deduction_alert": "teams_alert.teams_alert.teams_alert_engine.handle_event",
 	}
 }
 
@@ -155,7 +159,13 @@ doc_events = {
 
 scheduler_events = {
 	"daily": ["teams_alert.teams_alert.teams_alert_engine.trigger_daily_alerts"],
-	"cron": {"45 10 * * *": ["teams_alert.tasks.send_missing_checkin_alert"]},
+	"cron": {
+		"45 10 * * *": ["teams_alert.tasks.send_missing_checkin_alert"],
+		"0 11 * * 1-5": ["teams_alert.timesheet_alerts.send_daily_timesheet_reminders"],
+		"0 11 * * 6": ["teams_alert.timesheet_alerts.send_saturday_final_reminders"],
+		# Runs on days 1-7; each employee is sent on their first working day of the month.
+		"0 11 1-7 * *": ["teams_alert.timesheet_alerts.send_monthly_deduction_alerts"],
+	},
 }
 
 # Testing
