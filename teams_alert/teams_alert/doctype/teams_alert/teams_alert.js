@@ -7,6 +7,11 @@ frappe.ui.form.on("Teams Alert", {
 			);
 		}
 		frm.trigger("set_date_options");
+		frm.trigger("send_to_personal_chat");
+	},
+
+	send_to_personal_chat(frm) {
+		frm.toggle_display("teams_webhook", !frm.doc.send_to_personal_chat);
 	},
 
 	document_type(frm) {
@@ -17,9 +22,13 @@ frappe.ui.form.on("Teams Alert", {
 	set_date_options(frm) {
 		if (!frm.doc.document_type) return;
 		frappe.model.with_doctype(frm.doc.document_type, () => {
-			const date_fields = frappe.get_meta(frm.doc.document_type).fields
-				.filter((df) => ["Date", "Datetime"].includes(df.fieldtype))
-				.map((df) => ({ label: `${__(df.label)} (${df.fieldname})`, value: df.fieldname }));
+			const date_fields = frappe
+				.get_meta(frm.doc.document_type)
+				.fields.filter((df) => ["Date", "Datetime"].includes(df.fieldtype))
+				.map((df) => ({
+					label: `${__(df.label)} (${df.fieldname})`,
+					value: df.fieldname,
+				}));
 			const options = [
 				{ label: __("Created On"), value: "creation" },
 				{ label: __("Last Modified"), value: "modified" },

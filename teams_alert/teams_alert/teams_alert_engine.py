@@ -145,9 +145,8 @@ def send_alert(alert_name, doctype, docname, context=None):
 			return
 		doc = frappe.get_doc(doctype, docname)
 
-		webhook = frappe.get_doc("Teams Webhook", alert.teams_webhook)
-
-		if not webhook.enabled:
+		webhook = _resolve_webhook(alert, doc, context)
+		if not webhook or not webhook.enabled:
 			return
 
 		context = {**(context or {}), "doc": doc, "alert": alert}
@@ -157,13 +156,7 @@ def send_alert(alert_name, doctype, docname, context=None):
 
 		payload = _build_adaptive_card(subject, message_html, doctype, docname)
 
-		response = requests.post(
-			webhook.webhook_url.strip(),
-			json=payload,
-			headers={"Content-Type": "application/json"},
-			timeout=15,
-		)
-		response.raise_for_status()
+		_post_to_webhook(webhook.webhook_url, payload)
 
 		_set_alert_status(alert_name, "OK", None)
 
@@ -174,6 +167,69 @@ def send_alert(alert_name, doctype, docname, context=None):
 			message=error_msg,
 		)
 		_set_alert_status(alert_name, "Failed", error_msg[:500])
+
+
+def _resolve_webhook(alert, doc, context=None):
+	"""Teams Webhook to send `alert` for `doc` to, or None to skip.
+
+	With "Send to Employee's Personal Chat" ticked, only the employee's personal
+	webhook is used; there is never a fallback to a team channel.
+	"""
+	if not alert.send_to_personal_chat:
+		return frappe.get_doc("Teams Webhook", alert.teams_webhook) if alert.teams_webhook else None
+
+	if doc.doctype == "Employee":
+		employee = doc.name
+	else:
+		employee = (context or {}).get("employee") or doc.get("employee")
+
+	webhook = get_personal_webhook(employee)
+	return frappe.get_doc("Teams Webhook", webhook) if webhook else None
+
+
+def get_personal_webhook(employee):
+	"""Enabled personal Teams Webhook (name) of an employee, or None."""
+	return get_personal_webhooks([employee]).get(employee) if employee else None
+
+
+def get_personal_webhooks(employee_ids):
+	"""{employee: Teams Webhook name} of enabled personal webhooks, in one query."""
+	employee_ids = [e for e in employee_ids or [] if e]
+	if not employee_ids:
+		return {}
+	rows = frappe.get_all(
+		"Teams Webhook",
+		filters={"enabled": 1, "employee": ("in", employee_ids)},
+		fields=["name", "employee"],
+		order_by="creation asc",
+	)
+	result = {}
+	for row in rows:
+		result.setdefault(row.employee, row.name)
+	return result
+
+
+def _post_to_webhook(url, payload):
+	"""POST a payload to a Teams webhook. With `teams_alert_dry_run` set in site_config,
+	only log the masked URL and the payload, and do not POST."""
+	url = (url or "").strip()
+	if frappe.conf.get("teams_alert_dry_run"):
+		frappe.logger("teams_alert").info(
+			f"[DRY RUN] Teams POST to {_mask_url(url)}: {frappe.as_json(payload, indent=None)}"
+		)
+		return
+
+	response = requests.post(
+		url,
+		json=payload,
+		headers={"Content-Type": "application/json"},
+		timeout=15,
+	)
+	response.raise_for_status()
+
+
+def _mask_url(url):
+	return f"{url[:30]}...{url[-6:]}" if len(url) > 40 else "***"
 
 
 def _html_to_paragraphs(html):

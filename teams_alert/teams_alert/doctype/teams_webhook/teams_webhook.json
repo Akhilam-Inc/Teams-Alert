@@ -6,6 +6,7 @@
 	"engine": "InnoDB",
 	"field_order": [
 		"label",
+		"employee",
 		"enabled",
 		"webhook_url",
 		"description"
@@ -18,6 +19,15 @@
 			"label": "Label",
 			"reqd": 1,
 			"unique": 1
+		},
+		{
+			"description": "Set for an employee's personal chat webhook. Leave empty for a team/channel webhook.",
+			"fieldname": "employee",
+			"fieldtype": "Link",
+			"in_list_view": 1,
+			"in_standard_filter": 1,
+			"label": "Employee",
+			"options": "Employee"
 		},
 		{
 			"default": "1",
@@ -40,7 +50,7 @@
 		}
 	],
 	"links": [],
-	"modified": "2026-05-26 00:00:00.000000",
+	"modified": "2026-11-03 12:00:00.000000",
 	"modified_by": "Administrator",
 	"module": "Teams Alert",
 	"name": "Teams Webhook",

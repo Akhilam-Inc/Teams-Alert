@@ -15,6 +15,7 @@
   "enabled",
   "column_break_cpvm",
   "document_type",
+  "send_to_personal_chat",
   "teams_webhook",
   "message",
   "media_section",
@@ -76,7 +77,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Send Alert On",
-   "options": "New\nSubmit\nCancel\nUpdate\nValue Change\nDays Before\nDays After\nMethod\nDaily Attendance Check",
+   "options": "New\nSubmit\nCancel\nUpdate\nValue Change\nDays Before\nDays After\nMethod",
    "reqd": 1
   },
   {
@@ -90,8 +91,15 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Teams Webhook",
-   "options": "Teams Webhook",
-   "reqd": 1
+   "mandatory_depends_on": "eval:!doc.send_to_personal_chat",
+   "options": "Teams Webhook"
+  },
+  {
+   "default": "0",
+   "description": "Send to the employee's personal Teams chat (a Teams Webhook linked to that employee) instead of a team channel. Employees without a personal webhook are skipped.",
+   "fieldname": "send_to_personal_chat",
+   "fieldtype": "Check",
+   "label": "Send to Employee's Personal Chat"
   },
   {
    "fieldname": "subject",
@@ -137,7 +145,7 @@
   }
  ],
  "links": [],
- "modified": "2026-10-26 12:00:00.000000",
+ "modified": "2026-11-03 12:30:00.000000",
  "modified_by": "Administrator",
  "module": "Teams Alert",
  "name": "Teams Alert",

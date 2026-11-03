@@ -10,6 +10,9 @@ from frappe.utils import add_days, today
 from teams_alert.teams_alert.teams_alert_engine import handle_event, trigger_daily_alerts
 
 WEBHOOK = "_Test Teams Webhook"
+# The tests create their own webhooks. Skipping Teams Webhook test records also
+# skips its Employee link, so no Employee test records are made.
+test_ignore = ["Teams Webhook"]
 
 
 class TestTeamsAlert(FrappeTestCase):
@@ -31,6 +34,8 @@ class TestTeamsAlert(FrappeTestCase):
 		frappe.db.delete("Teams Alert", {"title": ("like", "_Test Alert %")})
 		frappe.db.delete("ToDo", {"description": "_Test Teams Alert"})
 		self.post = patch("teams_alert.teams_alert.teams_alert_engine.requests.post").start()
+		# Exercise the real POST path (mocked above) even when the site is in dry-run mode.
+		patch.dict(frappe.conf, {"teams_alert_dry_run": 0}).start()
 		self.addCleanup(patch.stopall)
 
 	def _alert(self, **values):
@@ -88,7 +93,9 @@ class TestTeamsAlert(FrappeTestCase):
 		self._todo().run_method("send_payment_reminder", context={"reminder_count": 3})
 
 		self.assertEqual(self._posted_subjects(), ["Reminder 3 sent"])
-		self.assertIn("/app/todo/", self.post.call_args.kwargs["json"]["attachments"][0]["content"]["actions"][0]["url"])
+		self.assertIn(
+			"/app/todo/", self.post.call_args.kwargs["json"]["attachments"][0]["content"]["actions"][0]["url"]
+		)
 
 	def test_method_requires_method_name(self):
 		with self.assertRaises(frappe.ValidationError):
@@ -136,3 +143,44 @@ class TestTeamsAlert(FrappeTestCase):
 		self._todo(priority="Low")
 
 		self.assertEqual(self._posted_subjects(), ["New High"])
+
+	# --- Send to Employee's Personal Chat ---
+
+	def _personal_alert(self, method):
+		return self._alert(
+			document_type="Employee",
+			teams_webhook=None,
+			send_to_personal_chat=1,
+			send_alert_on="Method",
+			method=method,
+			subject="Hi {{ doc.employee_name }}",
+		)
+
+	def test_personal_chat_uses_employee_webhook(self):
+		employees = frappe.get_all("Employee", limit=2, pluck="name")
+		frappe.db.delete("Teams Webhook", {"employee": ("in", employees)})
+		frappe.get_doc(
+			{
+				"doctype": "Teams Webhook",
+				"label": "_Test Personal Webhook",
+				"employee": employees[0],
+				"enabled": 1,
+				"webhook_url": "https://example.com/personal",
+			}
+		).insert()
+		self._personal_alert("_test_personal_method")
+
+		handle_event(frappe.get_doc("Employee", employees[0]), "_test_personal_method")
+		handle_event(frappe.get_doc("Employee", employees[1]), "_test_personal_method")
+
+		# Only the employee with a personal webhook gets it; no team-channel fallback.
+		self.assertEqual(self.post.call_count, 1)
+		self.assertEqual(self.post.call_args.args[0], "https://example.com/personal")
+
+	def test_personal_chat_needs_employee_document(self):
+		with self.assertRaises(frappe.ValidationError):
+			self._alert(send_to_personal_chat=1, send_alert_on="New", subject="X")
+
+	def test_team_webhook_required_without_personal_chat(self):
+		with self.assertRaises(frappe.ValidationError):
+			self._alert(teams_webhook=None, send_alert_on="New", subject="X")
