@@ -31,6 +31,8 @@ class TestTeamsAlert(FrappeTestCase):
 		frappe.db.delete("Teams Alert", {"title": ("like", "_Test Alert %")})
 		frappe.db.delete("ToDo", {"description": "_Test Teams Alert"})
 		self.post = patch("teams_alert.teams_alert.teams_alert_engine.requests.post").start()
+		# Exercise the real POST path (mocked above) even when the site is in dry-run mode.
+		patch.dict(frappe.conf, {"teams_alert_dry_run": 0}).start()
 		self.addCleanup(patch.stopall)
 
 	def _alert(self, **values):

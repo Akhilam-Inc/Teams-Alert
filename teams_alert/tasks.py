@@ -2,12 +2,12 @@ import datetime
 import traceback
 
 import frappe
-import requests
 from erpnext.setup.doctype.holiday_list.holiday_list import is_holiday
 from frappe.utils import get_datetime, today
 
 from teams_alert.teams_alert.teams_alert_engine import (
 	_build_adaptive_card,
+	_post_to_webhook,
 	_set_alert_status,
 )
 
@@ -158,12 +158,6 @@ def run_attendance_check_for_alert(alert_name):
 	# Reuse existing adaptive card layout and sending mechanism
 	payload = _build_adaptive_card(subject, message, "Employee Checkin", "")
 
-	response = requests.post(
-		webhook.webhook_url.strip(),
-		json=payload,
-		headers={"Content-Type": "application/json"},
-		timeout=15,
-	)
-	response.raise_for_status()
+	_post_to_webhook(webhook.webhook_url, payload)
 
 	_set_alert_status(alert_name, "OK", None)

@@ -157,13 +157,7 @@ def send_alert(alert_name, doctype, docname, context=None):
 
 		payload = _build_adaptive_card(subject, message_html, doctype, docname)
 
-		response = requests.post(
-			webhook.webhook_url.strip(),
-			json=payload,
-			headers={"Content-Type": "application/json"},
-			timeout=15,
-		)
-		response.raise_for_status()
+		_post_to_webhook(webhook.webhook_url, payload)
 
 		_set_alert_status(alert_name, "OK", None)
 
@@ -174,6 +168,29 @@ def send_alert(alert_name, doctype, docname, context=None):
 			message=error_msg,
 		)
 		_set_alert_status(alert_name, "Failed", error_msg[:500])
+
+
+def _post_to_webhook(url, payload):
+	"""POST a payload to a Teams webhook. With `teams_alert_dry_run` set in site_config,
+	only log the masked URL and the payload, and do not POST."""
+	url = (url or "").strip()
+	if frappe.conf.get("teams_alert_dry_run"):
+		frappe.logger("teams_alert").info(
+			f"[DRY RUN] Teams POST to {_mask_url(url)}: {frappe.as_json(payload, indent=None)}"
+		)
+		return
+
+	response = requests.post(
+		url,
+		json=payload,
+		headers={"Content-Type": "application/json"},
+		timeout=15,
+	)
+	response.raise_for_status()
+
+
+def _mask_url(url):
+	return f"{url[:30]}...{url[-6:]}" if len(url) > 40 else "***"
 
 
 def _html_to_paragraphs(html):
