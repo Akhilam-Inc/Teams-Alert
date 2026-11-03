@@ -10,6 +10,18 @@ class TeamsWebhook(Document):
 	def validate(self):
 		if self.webhook_url and not self.webhook_url.strip().startswith("https://"):
 			frappe.throw("Webhook URL must start with https://")
+		self.validate_personal_webhook()
+
+	def validate_personal_webhook(self):
+		"""At most one enabled personal webhook per employee."""
+		if not (self.employee and self.enabled):
+			return
+		existing = frappe.db.get_value(
+			"Teams Webhook",
+			{"employee": self.employee, "enabled": 1, "name": ("!=", self.name)},
+		)
+		if existing:
+			frappe.throw(f"Employee {self.employee} already has an enabled personal webhook: {existing}")
 
 	@frappe.whitelist()
 	def send_test_message(self):

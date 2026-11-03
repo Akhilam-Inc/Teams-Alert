@@ -170,6 +170,28 @@ def send_alert(alert_name, doctype, docname, context=None):
 		_set_alert_status(alert_name, "Failed", error_msg[:500])
 
 
+def get_personal_webhook(employee):
+	"""Enabled personal Teams Webhook (name) of an employee, or None."""
+	return get_personal_webhooks([employee]).get(employee) if employee else None
+
+
+def get_personal_webhooks(employee_ids):
+	"""{employee: Teams Webhook name} of enabled personal webhooks, in one query."""
+	employee_ids = [e for e in employee_ids or [] if e]
+	if not employee_ids:
+		return {}
+	rows = frappe.get_all(
+		"Teams Webhook",
+		filters={"enabled": 1, "employee": ("in", employee_ids)},
+		fields=["name", "employee"],
+		order_by="creation asc",
+	)
+	result = {}
+	for row in rows:
+		result.setdefault(row.employee, row.name)
+	return result
+
+
 def _post_to_webhook(url, payload):
 	"""POST a payload to a Teams webhook. With `teams_alert_dry_run` set in site_config,
 	only log the masked URL and the payload, and do not POST."""
